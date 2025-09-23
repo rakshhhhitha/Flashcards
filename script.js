@@ -1,10 +1,11 @@
-// script.js — works with vocab-data.json entries that use:
-// "Word", "Meanings", optional "Synonym", "Antonym"
+// script.js — works with vocab-data.json entries using keys:
+// "Word", "Meanings", optional "Synonym", optional "Antonym"
 
-let vocabData = [];    // all data (with stable _uid)
-let initialList = [];  // words for selected letter (ordered)
+// State
+let vocabData = [];    // entire dataset with stable _uid
+let initialList = [];  // filtered list (selected alphabet), ordered
 let currentQueue = []; // remaining queue (objects from initialList)
-let learned = [];      // mastered words
+let learned = [];      // mastered words (order moved-on)
 let currentIndex = 0;  // index into currentQueue
 
 // DOM refs
@@ -14,6 +15,7 @@ const msgEl = document.getElementById('msg');
 const progressEl = document.getElementById('progress');
 
 const cardInner = document.getElementById('cardInner');
+const card = document.getElementById('card');
 const frontWord = document.getElementById('frontWord');
 const frontInfo = document.getElementById('frontInfo');
 const backMeaning = document.getElementById('backMeaning');
@@ -57,16 +59,18 @@ function populateAlphabet() {
 }
 
 function filterBy(letter) {
-  return vocabData.filter(item => {
+  const filtered = vocabData.filter(item => {
     if (!item.Word) return false;
     if (letter === 'all') return true;
     return item.Word.toUpperCase().startsWith(letter);
-  }).sort((a,b) => a.Word.localeCompare(b.Word, undefined, { sensitivity:'base' }));
+  });
+  filtered.sort((a,b) => a.Word.localeCompare(b.Word, undefined, { sensitivity: 'base' }));
+  return filtered;
 }
 
 function resetQueue(letter) {
   initialList = filterBy(letter);
-  currentQueue = initialList.slice(); // shallow copy
+  currentQueue = initialList.slice(); // copy
   learned = [];
   currentIndex = 0;
   updateProgress();
@@ -88,7 +92,7 @@ function showEmpty() {
   frontInfo.textContent = '';
   backMeaning.textContent = '';
   backExtra.textContent = '';
-  cardInner.classList.remove('flipped');
+  card.classList.remove('flipped');
 }
 
 function showCard(index) {
@@ -106,23 +110,23 @@ function showCard(index) {
   if (index >= currentQueue.length) index = 0;
   currentIndex = index;
 
-  const card = currentQueue[currentIndex];
-  // stable numbering relative to the initial list
-  const originalPos = initialList.findIndex(c => c._uid === card._uid) + 1;
+  const cardObj = currentQueue[currentIndex];
+  // stable numbering relative to initialList
+  const originalPos = initialList.findIndex(c => c._uid === cardObj._uid) + 1;
   const total = initialList.length;
 
-  frontWord.textContent = `${originalPos}. ${card.Word}`;
-  frontInfo.textContent = `Card ${originalPos} of ${total} — tap to flip`;
+  frontWord.textContent = `${originalPos}. ${cardObj.Word}`;
+  frontInfo.textContent = `Card ${originalPos} of ${total} — tap Flip to reveal`;
 
-  backMeaning.textContent = card.Meanings || 'No definition available';
+  backMeaning.textContent = cardObj.Meanings || 'No definition available';
 
   let extrasHtml = '';
-  if (card.Synonym) extrasHtml += `<span class="badge-syn">Synonyms</span> ${escapeHtml(card.Synonym)}<br/>`;
-  if (card.Antonym) extrasHtml += `<span class="badge-ant">Antonyms</span> ${escapeHtml(card.Antonym)}<br/>`;
+  if (cardObj.Synonym) extrasHtml += `<span class="badge-syn">Synonyms</span> ${escapeHtml(cardObj.Synonym)}<br/>`;
+  if (cardObj.Antonym) extrasHtml += `<span class="badge-ant">Antonyms</span> ${escapeHtml(cardObj.Antonym)}<br/>`;
   backExtra.innerHTML = extrasHtml;
 
   // ensure front-facing
-  cardInner.classList.remove('flipped');
+  card.classList.remove('flipped');
   updateProgress();
 }
 
@@ -134,21 +138,21 @@ function escapeHtml(s) {
 // --- Actions ---
 function flipCard() {
   if (currentQueue.length === 0) return;
-  cardInner.classList.toggle('flipped');
+  card.classList.toggle('flipped');
 }
 
 function doItAgain() {
   if (currentQueue.length === 0) return;
-  const card = currentQueue.splice(currentIndex, 1)[0];
-  currentQueue.push(card);
+  const obj = currentQueue.splice(currentIndex, 1)[0];
+  currentQueue.push(obj); // send to end
   if (currentIndex >= currentQueue.length) currentIndex = 0;
   showCard(currentIndex);
 }
 
 function moveOn() {
   if (currentQueue.length === 0) return;
-  const card = currentQueue.splice(currentIndex, 1)[0];
-  learned.push(card);
+  const obj = currentQueue.splice(currentIndex, 1)[0];
+  learned.push(obj);
   if (currentIndex >= currentQueue.length) currentIndex = 0;
   updateProgress();
   if (currentQueue.length === 0) {
@@ -175,14 +179,14 @@ async function loadVocab() {
   try {
     setMsg('Loading vocab-data.json…');
     const res = await fetch('vocab-data.json', { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to fetch');
+    if (!res.ok) throw new Error('Failed to fetch vocab-data.json');
     const data = await res.json();
     vocabData = assignUIDs(data);
     populateAlphabet();
     resetQueue('all');
     setMsg('');
   } catch (err) {
-    console.warn('Fetch failed, using fallback sample', err);
+    console.warn('Could not fetch vocab-data.json, falling back to sample:', err);
     setMsg('Could not load vocab-data.json — using sample data', true);
     const sample = [
       { Word:'venom', Meanings:'poison, toxin, bane, acrimony', Synonym:'toxin, poison', Antonym:'antidote, remedy' },
@@ -195,7 +199,7 @@ async function loadVocab() {
   }
 }
 
-// --- Wire events ---
+// --- Wiring & init ---
 document.addEventListener('DOMContentLoaded', () => {
   populateAlphabet();
   loadVocab();
@@ -216,9 +220,10 @@ document.addEventListener('DOMContentLoaded', () => {
     showCard(next);
   });
 
-  flipBtn.addEventListener('click', flipCard);
-  cardInner.addEventListener('click', (ev) => {
-    // don't flip if a button inside the card was clicked (safety)
+  flipBtn.addEventListener('click', (e) => { e.stopPropagation(); flipCard(); });
+  card.addEventListener('click', (ev) => {
+    // avoid flipping when clicking buttons (not applicable here because buttons are outside the .card),
+    // but keep safety check for any inner content
     if (ev.target.closest('button')) return;
     flipCard();
   });
@@ -236,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
     resetQueue(letterSelect.value || 'all');
   });
 
-  // keyboard support (optional)
+  // keyboard: optional
   document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight') nextBtn.click();
     if (e.key === 'ArrowLeft') prevBtn.click();
