@@ -14,13 +14,16 @@ const letterSelect = document.getElementById('letterSelect');
 
 let reviewButtonsContainer;
 
+// ✅ Populate alphabet options
 function populateLetterOptions() {
-  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('');
+  letterSelect.innerHTML = ""; // clear any existing
+
   const allOption = document.createElement('option');
   allOption.value = 'all';
   allOption.textContent = 'All';
   letterSelect.appendChild(allOption);
 
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('');
   letters.forEach(letter => {
     const option = document.createElement('option');
     option.value = letter;
@@ -32,7 +35,7 @@ function populateLetterOptions() {
 function filterCardsByLetter(letter) {
   let filtered = vocabData.filter(card => {
     if (letter === 'all') return true;
-    return card.Word.toUpperCase().startsWith(letter);
+    return card.Word && card.Word.toUpperCase().startsWith(letter);
   });
   filtered.sort((a, b) => a.Word.toLowerCase().localeCompare(b.Word.toLowerCase()));
   return filtered;
