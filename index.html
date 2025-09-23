@@ -1,46 +1,71 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Flashcards — Master & Recall</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="style.css" rel="stylesheet">
 </head>
 <body>
   <div class="container py-4">
-    <h1 class="text-center mb-4 fw-bold">Flashcards — Master & Recall</h1>
+    <h1 class="text-center mb-3 fw-bold">Flashcards — Master & Recall</h1>
 
-    <div class="d-flex justify-content-center align-items-center mb-4">
-      <label for="letterSelect" class="me-2 fw-semibold">Select Alphabet:</label>
-      <select id="letterSelect" class="form-select w-auto me-3"></select>
-      <button id="clearProgress" class="btn btn-outline-secondary btn-sm">Clear Progress</button>
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap">
+      <div class="d-flex align-items-center gap-2">
+        <label for="letterSelect" class="mb-0 me-2">Select Alphabet:</label>
+        <select id="letterSelect" class="form-select w-auto"></select>
+        <button id="clearProgress" class="btn btn-outline-secondary btn-sm">Clear Progress</button>
+        <input id="fileInput" type="file" accept=".json" class="form-control form-control-sm ms-2" style="width:220px;display:none">
+        <button id="showUpload" class="btn btn-outline-primary btn-sm ms-2">Upload JSON</button>
+      </div>
+
+      <div id="msg" class="text-end text-muted small"></div>
     </div>
 
-    <div class="progress-info text-center mb-3">
-      <span id="progress">Learned 0</span>
+    <div class="text-center mb-2">
+      <span id="progress">Learned 0 / 0</span>
     </div>
 
-    <div class="flashcard-container mx-auto">
-      <div class="card-inner" id="flashcard">
-        <div class="card-face front">
-          <div id="frontWord" class="fw-bold fs-4"></div>
-          <div id="frontInfo" class="text-muted small mt-2"></div>
-        </div>
-        <div class="card-face back">
-          <div id="backMeaning" class="fs-5"></div>
-          <div class="review-buttons mt-3">
-            <button id="againBtn" class="btn btn-outline-danger btn-sm me-2">Do it again</button>
-            <button id="moveOnBtn" class="btn btn-success btn-sm">Move on</button>
+    <div class="d-flex justify-content-center">
+      <div class="flashcard-container">
+        <div id="cardInner" class="card-inner">
+          <div class="card-face front">
+            <div id="frontWord" class="card-word"></div>
+            <div id="frontInfo" class="card-sub text-muted mt-1"></div>
+          </div>
+
+          <div class="card-face back">
+            <div id="backMeaning" class="card-meaning"></div>
+            <div id="backExtra" class="mt-3 text-muted small"></div>
+            <div class="mt-4">
+              <button id="againBtn" class="btn btn-outline-danger btn-sm me-2">Do it again</button>
+              <button id="moveOnBtn" class="btn btn-success btn-sm">Move on</button>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="controls text-center mt-4">
+    <div class="text-center mt-4">
       <button id="prev" class="btn btn-secondary me-2">Previous</button>
       <button id="flip" class="btn btn-primary me-2">Flip</button>
       <button id="next" class="btn btn-secondary">Next</button>
+    </div>
+  </div>
+
+  <!-- Mastered overlay -->
+  <div id="masteryOverlay" class="mastery-overlay">
+    <div class="mastery-card">
+      <h3>🎉 You have mastered this!</h3>
+      <p id="masterCount" class="small text-muted"></p>
+      <div class="mastered-list">
+        <ul id="masteredList" style="list-style:none;padding-left:0;margin:0"></ul>
+      </div>
+      <div class="text-end mt-3">
+        <button id="closeMastery" class="btn btn-secondary me-2">Close</button>
+        <button id="restartAlphabet" class="btn btn-primary">Restart Alphabet</button>
+      </div>
     </div>
   </div>
 
