@@ -1,6 +1,9 @@
 let vocabData = [];
-let currentRound = [];
-let nextRound = [];
+let currentQueue = [];
+let againQueue = [];
+let hardQueue = [];
+let goodQueue = [];
+let easyDone = [];
 let currentIndex = 0;
 let flipped = false;
 
@@ -40,17 +43,35 @@ function filterCardsByLetter(letter) {
   return filtered;
 }
 
+function resetQueues(letter) {
+  againQueue = filterCardsByLetter(letter);
+  hardQueue = [];
+  goodQueue = [];
+  easyDone = [];
+  currentQueue = againQueue;
+  currentIndex = 0;
+}
+
+function getQueueName(queue) {
+  if (queue === againQueue) return "Again";
+  if (queue === hardQueue) return "Hard";
+  if (queue === goodQueue) return "Good";
+  return "";
+}
+
 function showCard(index) {
-  if (currentRound.length === 0) {
-    front.textContent = 'No words due for review.';
-    back.textContent = '';
-    removeReviewButtons();
+  if (currentQueue.length === 0) {
+    moveToNextQueue();
     return;
   }
 
-  const card = currentRound[index];
-  front.textContent = card.Word || 'No word';
-  back.textContent = card.Meanings || 'No definition';
+  const card = currentQueue[index];
+  const queueName = getQueueName(currentQueue);
+  const position = index + 1;
+  const total = currentQueue.length;
+
+  front.textContent = `[${queueName}] (${position}/${total}) ${card.Word || 'No word'}`;
+  back.textContent = `[${queueName}] (${position}/${total}) ${card.Meanings || 'No definition'}`;
   currentIndex = index;
   flipped = false;
   flashcard.classList.remove('flipped');
@@ -81,7 +102,7 @@ function showRecallButtons() {
     btn.textContent = label;
     btn.className = 'btn btn-sm me-2';
 
-    // color coding similar to Anki
+    // color coding
     if (label === 'Again') btn.classList.add('btn-danger');
     else if (label === 'Hard') btn.classList.add('btn-warning');
     else if (label === 'Good') btn.classList.add('btn-success');
@@ -101,41 +122,64 @@ function showRecallButtons() {
 }
 
 function handleReview(qualityIndex) {
-  const card = currentRound[currentIndex];
+  const card = currentQueue[currentIndex];
 
   if (qualityIndex === 0) { // Again
-    nextRound.push(card, card); // show again twice
+    againQueue.push(card);
   } else if (qualityIndex === 1) { // Hard
-    nextRound.push(card);
+    hardQueue.push(card);
   } else if (qualityIndex === 2) { // Good
-    nextRound.push(card);
+    goodQueue.push(card);
   } else if (qualityIndex === 3) { // Easy
-    // mastered, don’t push
+    easyDone.push(card);
   }
 
-  // Remove card from current round
-  currentRound.splice(currentIndex, 1);
+  // Remove card from current queue
+  currentQueue.splice(currentIndex, 1);
 
-  if (currentRound.length === 0) {
-    if (nextRound.length > 0) {
-      currentRound = [...nextRound];
-      nextRound = [];
-    }
+  if (currentQueue.length === 0) {
+    moveToNextQueue();
   }
 
-  if (currentRound.length > 0) {
+  if (currentQueue.length > 0) {
     let nextIndex = currentIndex;
-    if (nextIndex >= currentRound.length) nextIndex = 0;
+    if (nextIndex >= currentQueue.length) nextIndex = 0;
     showCard(nextIndex);
-  } else {
-    front.textContent = "All words mastered for this alphabet 🎉";
-    back.textContent = "";
-    removeReviewButtons();
   }
 }
 
+function moveToNextQueue() {
+  if (againQueue.length > 0) {
+    currentQueue = againQueue;
+    againQueue = [];
+  } else if (hardQueue.length > 0) {
+    currentQueue = hardQueue;
+    hardQueue = [];
+  } else if (goodQueue.length > 0) {
+    currentQueue = goodQueue;
+    goodQueue = [];
+  } else {
+    currentQueue = [];
+    showMasteryScreen();
+    return;
+  }
+  currentIndex = 0;
+  showCard(currentIndex);
+}
+
+function showMasteryScreen() {
+  let masteredCount = easyDone.length;
+  let masteredList = easyDone
+    .map((card, i) => `${i + 1}. ${card.Word} → ${card.Meanings}`)
+    .join('\n');
+
+  front.textContent = `🎉 You have mastered this alphabet!\n\nWords mastered: ${masteredCount}`;
+  back.textContent = masteredList || "No words were mastered.";
+  removeReviewButtons();
+}
+
 function flipCard() {
-  if (currentRound.length === 0) return;
+  if (currentQueue.length === 0) return;
   flipped = !flipped;
   flashcard.classList.toggle('flipped');
   if (flipped) {
@@ -146,16 +190,16 @@ function flipCard() {
 }
 
 function nextCard() {
-  if (currentRound.length === 0) return;
+  if (currentQueue.length === 0) return;
   let nextIndex = currentIndex + 1;
-  if (nextIndex >= currentRound.length) nextIndex = 0;
+  if (nextIndex >= currentQueue.length) nextIndex = 0;
   showCard(nextIndex);
 }
 
 function prevCard() {
-  if (currentRound.length === 0) return;
+  if (currentQueue.length === 0) return;
   let prevIndex = currentIndex - 1;
-  if (prevIndex < 0) prevIndex = currentRound.length - 1;
+  if (prevIndex < 0) prevIndex = currentQueue.length - 1;
   showCard(prevIndex);
 }
 
@@ -167,13 +211,11 @@ async function loadVocab() {
     vocabData = await response.json();
     vocabData.sort((a, b) => a.Word.toLowerCase().localeCompare(b.Word.toLowerCase()));
 
-    currentRound = filterCardsByLetter('all');
-    nextRound = [];
-
-    if (currentRound.length > 0) {
+    resetQueues('all');
+    if (currentQueue.length > 0) {
       showCard(0);
     } else {
-      front.textContent = 'No words due for review.';
+      front.textContent = 'No words found.';
       back.textContent = '';
     }
   } catch (error) {
@@ -188,9 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
   loadVocab();
 
   letterSelect.addEventListener('change', (e) => {
-    currentRound = filterCardsByLetter(e.target.value);
-    nextRound = [];
-    if (currentRound.length > 0) {
+    resetQueues(e.target.value);
+    if (currentQueue.length > 0) {
       showCard(0);
     } else {
       front.textContent = `No words for "${e.target.value}".`;
