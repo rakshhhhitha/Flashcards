@@ -14,9 +14,18 @@ const letterSelect = document.getElementById('letterSelect');
 
 let reviewButtonsContainer;
 
-// ✅ Populate alphabet options
+// Placeholder options
 function populateLetterOptions() {
-  letterSelect.innerHTML = ""; // clear any existing
+  letterSelect.innerHTML = "";
+  const allOption = document.createElement('option');
+  allOption.value = 'all';
+  allOption.textContent = 'All';
+  letterSelect.appendChild(allOption);
+}
+
+// Update dropdown based on dataset
+function updateLetterOptions() {
+  letterSelect.innerHTML = "";
 
   const allOption = document.createElement('option');
   allOption.value = 'all';
@@ -28,10 +37,20 @@ function populateLetterOptions() {
     const option = document.createElement('option');
     option.value = letter;
     option.textContent = letter;
+
+    const hasWord = vocabData.some(card => card.Word && card.Word.toUpperCase().startsWith(letter));
+    if (!hasWord) option.disabled = true;
+
     letterSelect.appendChild(option);
   });
+
+  const firstAvailable = letters.find(l => vocabData.some(card => card.Word && card.Word.toUpperCase().startsWith(l))) || 'all';
+  letterSelect.value = firstAvailable;
+  resetQueue(letterSelect.value);
+  showCard(0);
 }
 
+// Filter cards
 function filterCardsByLetter(letter) {
   let filtered = vocabData.filter(card => {
     if (letter === 'all') return true;
@@ -41,12 +60,14 @@ function filterCardsByLetter(letter) {
   return filtered;
 }
 
+// Reset queue
 function resetQueue(letter) {
   currentQueue = filterCardsByLetter(letter);
   learned = [];
   currentIndex = 0;
 }
 
+// Show flashcard
 function showCard(index) {
   if (currentQueue.length === 0) {
     showMasteryScreen();
@@ -54,10 +75,7 @@ function showCard(index) {
   }
 
   const card = currentQueue[index];
-  const position = index + 1;
-  const total = currentQueue.length;
-
-  front.textContent = `(${position}/${total}) ${card.Word || 'No word'}`;
+  front.textContent = `(${index + 1}/${currentQueue.length}) ${card.Word || 'No word'}`;
   back.textContent =
     `Meaning: ${card.Meanings || 'No definition'}\n\n` +
     `Synonym: ${card.Synonym || '—'}\n` +
@@ -66,10 +84,10 @@ function showCard(index) {
   currentIndex = index;
   flipped = false;
   flashcard.classList.remove('flipped');
-
   removeReviewButtons();
 }
 
+// Remove review buttons
 function removeReviewButtons() {
   if (reviewButtonsContainer) {
     reviewButtonsContainer.remove();
@@ -80,6 +98,7 @@ function removeReviewButtons() {
   nextBtn.disabled = false;
 }
 
+// Show recall buttons
 function showRecallButtons() {
   if (reviewButtonsContainer) return;
 
@@ -106,6 +125,7 @@ function showRecallButtons() {
   nextBtn.disabled = true;
 }
 
+// Handle review
 function handleReview(moveOn) {
   const card = currentQueue[currentIndex];
 
@@ -125,30 +145,29 @@ function handleReview(moveOn) {
   }
 }
 
+// Mastery screen
 function showMasteryScreen() {
   front.textContent = `🎉 You have mastered this!`;
   back.textContent = learned.map((c, i) => `${i + 1}. ${c.Word} → ${c.Meanings}`).join('\n');
   removeReviewButtons();
 }
 
+// Flip card
 function flipCard() {
   if (currentQueue.length === 0) return;
   flipped = !flipped;
   flashcard.classList.toggle('flipped');
-  if (flipped) {
-    showRecallButtons();
-  } else {
-    removeReviewButtons();
-  }
+  if (flipped) showRecallButtons();
+  else removeReviewButtons();
 }
 
+// Next / Previous
 function nextCard() {
   if (currentQueue.length === 0) return;
   let nextIndex = currentIndex + 1;
   if (nextIndex >= currentQueue.length) nextIndex = 0;
   showCard(nextIndex);
 }
-
 function prevCard() {
   if (currentQueue.length === 0) return;
   let prevIndex = currentIndex - 1;
@@ -156,21 +175,14 @@ function prevCard() {
   showCard(prevIndex);
 }
 
+// Load vocab
 async function loadVocab() {
   try {
     const response = await fetch('vocab-data.json');
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
     vocabData = await response.json();
     vocabData.sort((a, b) => a.Word.toLowerCase().localeCompare(b.Word.toLowerCase()));
-
-    resetQueue('all');
-    if (currentQueue.length > 0) {
-      showCard(0);
-    } else {
-      front.textContent = 'No words found.';
-      back.textContent = '';
-    }
+    updateLetterOptions();
   } catch (error) {
     front.textContent = 'Error loading vocab data.';
     back.textContent = '';
@@ -178,15 +190,15 @@ async function loadVocab() {
   }
 }
 
+// Event listeners
 document.addEventListener('DOMContentLoaded', () => {
   populateLetterOptions();
   loadVocab();
 
   letterSelect.addEventListener('change', (e) => {
     resetQueue(e.target.value);
-    if (currentQueue.length > 0) {
-      showCard(0);
-    } else {
+    if (currentQueue.length > 0) showCard(0);
+    else {
       front.textContent = `No words for "${e.target.value}".`;
       back.textContent = '';
       removeReviewButtons();
