@@ -1,9 +1,6 @@
 let vocabData = [];
 let currentQueue = [];
-let againQueue = [];
-let hardQueue = [];
-let goodQueue = [];
-let easyDone = [];
+let learned = [];
 let currentIndex = 0;
 let flipped = false;
 
@@ -14,8 +11,6 @@ const prevBtn = document.getElementById('prev');
 const nextBtn = document.getElementById('next');
 const flipBtn = document.getElementById('flip');
 const letterSelect = document.getElementById('letterSelect');
-
-const REVIEW_QUALITY = ['Again', 'Hard', 'Good', 'Easy'];
 
 let reviewButtonsContainer;
 
@@ -43,35 +38,24 @@ function filterCardsByLetter(letter) {
   return filtered;
 }
 
-function resetQueues(letter) {
-  againQueue = filterCardsByLetter(letter);
-  hardQueue = [];
-  goodQueue = [];
-  easyDone = [];
-  currentQueue = againQueue;
+function resetQueue(letter) {
+  currentQueue = filterCardsByLetter(letter);
+  learned = [];
   currentIndex = 0;
-}
-
-function getQueueName(queue) {
-  if (queue === againQueue) return "Again";
-  if (queue === hardQueue) return "Hard";
-  if (queue === goodQueue) return "Good";
-  return "";
 }
 
 function showCard(index) {
   if (currentQueue.length === 0) {
-    moveToNextQueue();
+    showMasteryScreen();
     return;
   }
 
   const card = currentQueue[index];
-  const queueName = getQueueName(currentQueue);
   const position = index + 1;
   const total = currentQueue.length;
 
-  front.textContent = `[${queueName}] (${position}/${total}) ${card.Word || 'No word'}`;
-  back.textContent = `[${queueName}] (${position}/${total}) ${card.Meanings || 'No definition'}`;
+  front.textContent = `(${position}/${total}) ${card.Word || 'No word'}`;
+  back.textContent = `${card.Meanings || 'No definition'}`;
   currentIndex = index;
   flipped = false;
   flashcard.classList.remove('flipped');
@@ -79,7 +63,6 @@ function showCard(index) {
   removeReviewButtons();
 }
 
-// Remove recall rating buttons
 function removeReviewButtons() {
   if (reviewButtonsContainer) {
     reviewButtonsContainer.remove();
@@ -90,91 +73,57 @@ function removeReviewButtons() {
   nextBtn.disabled = false;
 }
 
-// Show recall rating buttons after flipping
 function showRecallButtons() {
-  if (reviewButtonsContainer) return; // already shown
+  if (reviewButtonsContainer) return;
 
   reviewButtonsContainer = document.createElement('div');
   reviewButtonsContainer.className = 'mb-3 mt-3';
 
-  REVIEW_QUALITY.forEach((label, i) => {
-    const btn = document.createElement('button');
-    btn.textContent = label;
-    btn.className = 'btn btn-sm me-2';
+  // Do it again button
+  const againBtn = document.createElement('button');
+  againBtn.textContent = 'Do it again';
+  againBtn.className = 'btn btn-danger btn-sm me-2';
+  againBtn.addEventListener('click', () => handleReview(false));
 
-    // color coding
-    if (label === 'Again') btn.classList.add('btn-danger');
-    else if (label === 'Hard') btn.classList.add('btn-warning');
-    else if (label === 'Good') btn.classList.add('btn-success');
-    else btn.classList.add('btn-primary');
+  // Move on button
+  const moveOnBtn = document.createElement('button');
+  moveOnBtn.textContent = 'Move on';
+  moveOnBtn.className = 'btn btn-success btn-sm';
+  moveOnBtn.addEventListener('click', () => handleReview(true));
 
-    btn.addEventListener('click', () => handleReview(i));
-
-    reviewButtonsContainer.appendChild(btn);
-  });
+  reviewButtonsContainer.appendChild(againBtn);
+  reviewButtonsContainer.appendChild(moveOnBtn);
 
   flashcard.parentElement.appendChild(reviewButtonsContainer);
 
-  // Hide flip button and disable prev/next while rating
   flipBtn.style.display = 'none';
   prevBtn.disabled = true;
   nextBtn.disabled = true;
 }
 
-function handleReview(qualityIndex) {
+function handleReview(moveOn) {
   const card = currentQueue[currentIndex];
 
-  if (qualityIndex === 0) { // Again
-    againQueue.push(card);
-  } else if (qualityIndex === 1) { // Hard
-    hardQueue.push(card);
-  } else if (qualityIndex === 2) { // Good
-    goodQueue.push(card);
-  } else if (qualityIndex === 3) { // Easy
-    easyDone.push(card);
+  if (moveOn) {
+    learned.push(card);
+    currentQueue.splice(currentIndex, 1);
+  } else {
+    // keep the card in queue, just move to next
+    currentIndex++;
   }
 
-  // Remove card from current queue
-  currentQueue.splice(currentIndex, 1);
-
-  if (currentQueue.length === 0) {
-    moveToNextQueue();
-  }
+  if (currentIndex >= currentQueue.length) currentIndex = 0;
 
   if (currentQueue.length > 0) {
-    let nextIndex = currentIndex;
-    if (nextIndex >= currentQueue.length) nextIndex = 0;
-    showCard(nextIndex);
-  }
-}
-
-function moveToNextQueue() {
-  if (againQueue.length > 0) {
-    currentQueue = againQueue;
-    againQueue = [];
-  } else if (hardQueue.length > 0) {
-    currentQueue = hardQueue;
-    hardQueue = [];
-  } else if (goodQueue.length > 0) {
-    currentQueue = goodQueue;
-    goodQueue = [];
+    showCard(currentIndex);
   } else {
-    currentQueue = [];
     showMasteryScreen();
-    return;
   }
-  currentIndex = 0;
-  showCard(currentIndex);
 }
 
 function showMasteryScreen() {
-  let masteredCount = easyDone.length;
-  let masteredList = easyDone
-    .map((card, i) => `${i + 1}. ${card.Word} → ${card.Meanings}`)
-    .join('\n');
-
-  front.textContent = `🎉 You have mastered this alphabet!\n\nWords mastered: ${masteredCount}`;
-  back.textContent = masteredList || "No words were mastered.";
+  front.textContent = `🎉 You have mastered this!`;
+  back.textContent = learned.map((c, i) => `${i + 1}. ${c.Word} → ${c.Meanings}`).join('\n');
   removeReviewButtons();
 }
 
@@ -211,7 +160,7 @@ async function loadVocab() {
     vocabData = await response.json();
     vocabData.sort((a, b) => a.Word.toLowerCase().localeCompare(b.Word.toLowerCase()));
 
-    resetQueues('all');
+    resetQueue('all');
     if (currentQueue.length > 0) {
       showCard(0);
     } else {
@@ -230,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadVocab();
 
   letterSelect.addEventListener('change', (e) => {
-    resetQueues(e.target.value);
+    resetQueue(e.target.value);
     if (currentQueue.length > 0) {
       showCard(0);
     } else {
