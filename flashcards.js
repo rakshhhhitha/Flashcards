@@ -27,8 +27,8 @@ async function loadVocab() {
     const response = await fetch('vocab-data.json');
     vocabData = await response.json();
 
-    // Sort vocab alphabetically by word
-    vocabData.sort((a, b) => a.word.localeCompare(b.word));
+    // Sort vocab alphabetically by Word (case insensitive)
+    vocabData.sort((a, b) => a.Word.toLowerCase().localeCompare(b.Word.toLowerCase()));
 
     // Initially show all
     filteredVocab = vocabData;
@@ -53,8 +53,8 @@ function showCard(index) {
     return;
   }
   const card = filteredVocab[index];
-  front.textContent = card.word || 'No word';
-  back.textContent = card.definition || 'No definition';
+  front.textContent = card.Word || 'No word';
+  back.textContent = card.Meanings || 'No definition';
   currentIndex = index;
   flipped = false;
   flashcard.classList.remove('flipped');
@@ -70,7 +70,7 @@ function nextCard() {
   if (currentIndex < filteredVocab.length - 1) {
     showCard(currentIndex + 1);
   } else {
-    // Optionally wrap around to first card
+    // Wrap around to first card
     showCard(0);
   }
 }
@@ -80,7 +80,7 @@ function prevCard() {
   if (currentIndex > 0) {
     showCard(currentIndex - 1);
   } else {
-    // Optionally wrap around to last card
+    // Wrap around to last card
     showCard(filteredVocab.length - 1);
   }
 }
@@ -90,7 +90,7 @@ function filterByLetter(letter) {
     filteredVocab = vocabData;
   } else {
     filteredVocab = vocabData.filter(item =>
-      item.word.toUpperCase().startsWith(letter)
+      item.Word.toUpperCase().startsWith(letter)
     );
   }
   if (filteredVocab.length > 0) {
