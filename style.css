@@ -1,61 +1,24 @@
 :root {
-  --max-width: 980px;
-  --card-height: 360px;
-  --accent: #0d6efd;
   --muted: #6b7280;
 }
 
 body {
-  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
   background: #f6f7fb;
   color: #0f172a;
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial;
   margin: 0;
 }
 
-.app {
-  max-width: var(--max-width);
-  margin: 28px auto;
-  padding: 18px;
+.container {
+  max-width: 980px;
 }
 
-header {
-  text-align: center;
-  margin-bottom: 14px;
-}
-
-h1 {
-  font-size: 2.2rem;
-  font-weight: 700;
-  margin: 0;
-}
-
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 12px;
-}
-
-.controls {
-  display: flex;
-  align-items: center;
-}
-
-.progressline {
-  font-size: 0.95rem;
-  color: var(--muted);
-}
-
-.flashcard-wrap {
-  display: flex;
-  justify-content: center;
-  margin: 20px 0;
-}
-
-.flashcard {
-  width: min(760px, 92%);
-  height: var(--card-height);
-  perspective: 1200px;
+/* Flashcard */
+.flashcard-container {
+  width: clamp(280px, 90vw, 520px);
+  height: clamp(200px, 60vw, 340px);
+  perspective: 1000px;
+  margin: 0 auto;
 }
 
 .card-inner {
@@ -64,10 +27,13 @@ h1 {
   position: relative;
   transition: transform 0.6s;
   transform-style: preserve-3d;
-  border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.12);
   background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.08);
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .card-inner.flipped {
@@ -77,106 +43,109 @@ h1 {
 .card-face {
   position: absolute;
   inset: 0;
-  padding: 22px;
+  padding: 20px;
   backface-visibility: hidden;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
-.card-face.front { }
-.card-face.back { transform: rotateY(180deg); }
+.card-face.back {
+  transform: rotateY(180deg);
+}
 
 .card-word {
-  font-size: 1.6rem;
+  font-size: clamp(1.2rem, 3vw, 1.6rem);
   font-weight: 700;
-  margin-bottom: 6px;
 }
 
 .card-sub {
-  font-size: 0.95rem;
   color: var(--muted);
+  font-size: clamp(0.8rem, 2vw, 0.95rem);
+  margin-top: 0.3rem;
 }
 
 .card-meaning {
-  white-space: pre-wrap;
-  font-size: 1.05rem;
+  font-size: clamp(0.9rem, 2.2vw, 1.05rem);
   line-height: 1.45;
+  white-space: pre-wrap;
+  max-height: 50%;
+  overflow: auto;
+  text-align: left;
+  width: 100%;
 }
 
-.hint {
-  font-size: 0.9rem;
-  color: var(--muted);
+.btn-outline-danger,
+.btn-success {
+  min-width: 110px;
 }
 
-.controls-row {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin-top: 10px;
-}
-
-.btn-ghost {
-  background: rgba(15, 23, 42, 0.06);
-  border: none;
-  border-radius: 8px;
-  padding: 10px 18px;
-}
-
-.btn-main {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 18px;
-}
-
-.recall-buttons {
-  display: none;
-  gap: 12px;
-  justify-content: center;
-  margin-top: 14px;
-}
-
+/* Mastery overlay */
 .mastery-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(4, 6, 15, 0.55);
   display: none;
   align-items: center;
   justify-content: center;
-  padding: 18px;
+  background: rgba(0, 0, 0, 0.45);
   z-index: 9999;
+  padding: 16px;
 }
 
 .mastery-card {
-  width: min(900px, 98%);
-  max-height: 86vh;
-  background: #fff;
-  border-radius: 12px;
-  padding: 18px;
+  width: min(900px, 95%);
+  max-height: 90vh;
   overflow: auto;
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px;
 }
 
 .mastered-list {
-  background: #f8fafc;
-  padding: 10px;
+  background: #fbfdff;
   border-radius: 6px;
+  padding: 8px;
+  margin-top: 8px;
   max-height: 60vh;
   overflow: auto;
 }
-
 .mastered-list li {
-  padding: 6px 4px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  padding: 8px;
+  border-bottom: 1px solid rgba(2, 6, 23, 0.04);
 }
 
-footer {
-  text-align: center;
-  margin-top: 14px;
-  color: var(--muted);
+/* Buttons section */
+.text-center.mt-4 button {
+  margin-bottom: 0.5rem;
 }
 
-@media (max-width: 640px) {
-  h1 { font-size: 1.5rem; }
-  .card-word { font-size: 1.2rem; }
-  .card-meaning { font-size: 1rem; }
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .d-flex.justify-content-between {
+    flex-direction: column;
+    gap: 0.6rem;
+    align-items: flex-start !important;
+  }
+
+  #msg {
+    text-align: left !important;
+  }
+
+  .card-meaning {
+    max-height: 45%;
+  }
+}
+
+@media (max-width: 480px) {
+  .flashcard-container {
+    height: 260px;
+  }
+  .card-word {
+    font-size: 1.1rem;
+  }
+  .card-meaning {
+    font-size: 0.85rem;
+  }
 }
