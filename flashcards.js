@@ -11,7 +11,6 @@ const nextBtn = document.getElementById('next');
 const flipBtn = document.getElementById('flip');
 const letterSelect = document.getElementById('letterSelect');
 
-// Create A-Z options dynamically
 function populateLetterOptions() {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('');
   letters.forEach(letter => {
@@ -25,12 +24,13 @@ function populateLetterOptions() {
 async function loadVocab() {
   try {
     const response = await fetch('vocab-data.json');
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
     vocabData = await response.json();
 
-    // Sort vocab alphabetically by Word (case insensitive)
+    // Sort alphabetically by Word, case insensitive
     vocabData.sort((a, b) => a.Word.toLowerCase().localeCompare(b.Word.toLowerCase()));
 
-    // Initially show all
     filteredVocab = vocabData;
 
     if (filteredVocab.length > 0) {
@@ -42,7 +42,7 @@ async function loadVocab() {
   } catch (error) {
     front.textContent = 'Error loading vocab data.';
     back.textContent = '';
-    console.error(error);
+    console.error('Fetch error:', error);
   }
 }
 
@@ -70,7 +70,6 @@ function nextCard() {
   if (currentIndex < filteredVocab.length - 1) {
     showCard(currentIndex + 1);
   } else {
-    // Wrap around to first card
     showCard(0);
   }
 }
@@ -80,7 +79,6 @@ function prevCard() {
   if (currentIndex > 0) {
     showCard(currentIndex - 1);
   } else {
-    // Wrap around to last card
     showCard(filteredVocab.length - 1);
   }
 }
@@ -102,16 +100,16 @@ function filterByLetter(letter) {
   }
 }
 
-letterSelect.addEventListener('change', (e) => {
-  filterByLetter(e.target.value);
+document.addEventListener('DOMContentLoaded', () => {
+  populateLetterOptions();
+  loadVocab();
+
+  letterSelect.addEventListener('change', (e) => {
+    filterByLetter(e.target.value);
+  });
+
+  prevBtn.addEventListener('click', prevCard);
+  nextBtn.addEventListener('click', nextCard);
+  flipBtn.addEventListener('click', flipCard);
+  flashcard.addEventListener('click', flipCard);
 });
-
-prevBtn.addEventListener('click', prevCard);
-nextBtn.addEventListener('click', nextCard);
-flipBtn.addEventListener('click', flipCard);
-
-// Also flip card on click
-flashcard.addEventListener('click', flipCard);
-
-populateLetterOptions();
-loadVocab();
