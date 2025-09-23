@@ -1,77 +1,34 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Flashcards — Master & Recall</title>
-
-  <!-- Bootstrap (optional) -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-  <!-- Local styles -->
-  <link href="style.css" rel="stylesheet">
+  <title>Flashcards with Spaced Repetition</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="flashcards.css" />
 </head>
 <body>
-  <div class="container py-4">
-    <h1 class="text-center mb-3 fw-bold">Flashcards — Master & Recall</h1>
+  <div class="container d-flex flex-column justify-content-center align-items-center min-vh-100">
+    <h1 class="mb-3">Flashcards</h1>
 
-    <div class="top-row mb-2 d-flex justify-content-between align-items-center flex-wrap">
-      <div class="controls-left d-flex align-items-center gap-2 flex-wrap">
-        <label for="letterSelect" class="mb-0">Select Alphabet:</label>
-        <select id="letterSelect" class="form-select form-select-sm" style="width:110px;"></select>
-        <button id="resetBtn" class="btn btn-outline-secondary btn-sm">Reset</button>
-      </div>
-
-      <div class="text-end">
-        <div id="msg" class="small text-muted"></div>
-        <div id="progress" class="small text-muted">Learned 0 / 0</div>
-      </div>
+    <div class="mb-3">
+      <label for="letterSelect" class="form-label">Select Alphabet:</label>
+      <select id="letterSelect" class="form-select w-auto"></select>
     </div>
 
-    <div class="flashcard-container mx-auto">
-      <!-- Rotating element is #card (we toggle .flipped on it) -->
-      <div id="cardInner" class="card-inner" aria-live="polite">
-        <div id="card" class="card" role="group" aria-label="Flashcard">
-          <div class="card-face front" id="frontFace">
-            <div id="frontWord" class="card-word">Loading...</div>
-            <div id="frontInfo" class="card-sub">Card info</div>
-          </div>
-
-          <div class="card-face back" id="backFace">
-            <div id="backMeaning" class="card-meaning"></div>
-            <div id="backExtra" style="margin-top:8px;"></div>
-          </div>
-        </div>
+    <div class="flashcard-container position-relative">
+      <div id="flashcard" class="flashcard">
+        <div class="front"></div>
+        <div class="back"></div>
       </div>
-    </div>
-
-    <div class="controls mt-3 d-flex justify-content-center gap-2 flex-wrap">
-      <button id="prevBtn" class="btn btn-secondary">Previous</button>
-      <button id="flipBtn" class="btn btn-primary">Flip</button>
-      <button id="nextBtn" class="btn btn-secondary">Next</button>
-    </div>
-
-    <div class="recall mt-3 d-flex justify-content-center gap-3 flex-wrap">
-      <button id="againBtn" class="btn btn-outline-danger">Do it again</button>
-      <button id="moveOnBtn" class="btn btn-success">Move on</button>
-    </div>
-  </div>
-
-  <!-- Mastery overlay -->
-  <div id="masteryOverlay" class="mastery-overlay" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="mastery-card">
-      <h3>🎉 You have mastered this!</h3>
-      <p id="masterCount" class="small text-muted"></p>
-      <div class="mastered-list">
-        <ul id="masteredList" style="list-style:none;margin:0;padding-left:0"></ul>
-      </div>
-      <div class="text-end mt-3">
-        <button id="closeMastery" class="btn btn-secondary me-2">Close</button>
-        <button id="restartAlphabet" class="btn btn-primary">Restart Alphabet</button>
+      <div class="controls mt-4 text-center">
+        <button id="prev" class="btn btn-secondary me-2">Previous</button>
+        <button id="flip" class="btn btn-primary me-2">Flip</button>
+        <button id="next" class="btn btn-secondary">Next</button>
       </div>
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <script src="flashcards.js"></script>
 </body>
 </html>
