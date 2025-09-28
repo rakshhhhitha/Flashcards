@@ -1,48 +1,66 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Responsive Flashcards</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Flashcards — Responsive</title>
 
-  <!-- Bootstrap for quick responsive utilities -->
+  <!-- Bootstrap for grid / controls -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="container py-4 d-flex flex-column align-items-center">
-    <h1 class="mb-3 text-center">Flashcards</h1>
+  <div class="app-root">
+    <header class="site-header">
+      <h1>Flashcards</h1>
+      <p class="lead">Tap or press <kbd>space</kbd> to flip — mark cards as "Do it again" or "Move on"</p>
+    </header>
 
-    <div class="w-100 mb-3">
-      <div class="row g-2 align-items-center">
+    <main class="container-lg">
+      <div class="row align-items-center top-row mb-3">
         <div class="col-auto">
-          <label for="letterSelect" class="form-label mb-0 small">Select Alphabet</label>
-          <select id="letterSelect" class="form-select" aria-label="Select alphabet"></select>
+          <label class="form-label small mb-1" for="letterSelect">Select Alphabet</label>
+          <select id="letterSelect" class="form-select"></select>
         </div>
 
-        <div class="col d-flex justify-content-end align-items-center">
-          <div id="progress" class="small text-muted">Loading...</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="flashcard-wrap w-100 d-flex justify-content-center">
-      <!-- Flashcard; clicking it flips -->
-      <div id="flashcard" class="flashcard" tabindex="0" role="button" aria-pressed="false" aria-live="polite">
-        <div class="flashcard-inner">
-          <div class="face front" aria-hidden="false"></div>
-          <div class="face back" aria-hidden="true"></div>
+        <div class="col">
+          <div class="progress-wrap d-flex align-items-center justify-content-end">
+            <div id="progressText" class="text-muted small me-3">Loading...</div>
+            <div class="progress" style="width:240px; height:10px;">
+              <div id="progressBar" class="progress-bar" role="progressbar" style="width:0%"></div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="controls d-flex gap-2 mt-3 flex-wrap justify-content-center w-100">
-      <button id="prev" class="btn btn-outline-secondary">Previous</button>
-      <button id="flip" class="btn btn-primary">Flip</button>
-      <button id="next" class="btn btn-outline-secondary">Next</button>
-    </div>
+      <div class="row justify-content-center">
+        <div class="col-12 col-md-10 col-lg-8">
+          <div class="flashcard-area">
+            <div id="flashcard" class="flashcard" tabindex="0" role="button" aria-live="polite">
+              <div class="flashcard-inner">
+                <div class="face front" aria-hidden="false"></div>
+                <div class="face back" aria-hidden="true"></div>
+              </div>
+            </div>
 
-    <div id="message" class="mt-3 text-center text-muted small" aria-live="polite"></div>
+            <!-- container where JS will append Do it again / Move on buttons -->
+            <div id="reviewContainer" class="review-container d-flex justify-content-center mt-3"></div>
+          </div>
+
+          <div class="controls d-flex justify-content-center gap-2 mt-4">
+            <button id="prev" class="btn btn-outline-secondary">Previous</button>
+            <button id="flip" class="btn btn-primary">Flip</button>
+            <button id="next" class="btn btn-outline-secondary">Next</button>
+          </div>
+
+          <div id="message" class="text-center small text-muted mt-3" aria-live="polite"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer text-center small text-muted mt-4">
+      Tip: If words do not load, run a local server (e.g. <code>python3 -m http.server 8000</code>) and open <code>http://localhost:8000</code>.
+    </footer>
   </div>
 
   <script src="script.js"></script>
