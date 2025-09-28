@@ -1,6 +1,5 @@
 /* Responsive Flashcards - script.js
-   - Fixed flipping so the back contains meaning/synonym/antonym
-   - Responsive friendly, prevents accidental flips when clicking buttons
+   Now with next-alphabet progression after mastering a letter
 */
 
 let vocabData = [];
@@ -21,7 +20,7 @@ const progressEl = document.getElementById('progress');
 
 let reviewButtonsContainer = null;
 
-/* Small HTML-escape helper */
+/* HTML-escape helper */
 function escapeHTML(s) {
   if (s == null) return '';
   return String(s)
@@ -32,7 +31,7 @@ function escapeHTML(s) {
     .replace(/'/g, '&#039;');
 }
 
-/* Update select with letter options based on dataset */
+/* update alphabet dropdown */
 function updateLetterOptions() {
   letterSelect.innerHTML = '';
   const allOpt = document.createElement('option');
@@ -62,7 +61,7 @@ function updateLetterOptions() {
   else updateProgress();
 }
 
-/* Filter and sort */
+/* filter and sort */
 function filterCardsByLetter(letter) {
   let arr = vocabData.filter(c => c.Word && String(c.Word).trim() !== '');
   if (letter !== 'all') {
@@ -72,7 +71,7 @@ function filterCardsByLetter(letter) {
   return arr;
 }
 
-/* Reset queue for chosen letter */
+/* reset queue for given letter */
 function resetQueue(letter) {
   currentQueue = filterCardsByLetter(letter);
   learned = [];
@@ -83,7 +82,7 @@ function resetQueue(letter) {
   updateProgress();
 }
 
-/* Show a specific card (index safe-checked) */
+/* show a card */
 function showCard(index = 0) {
   if (!currentQueue || currentQueue.length === 0) {
     showMasteryScreen();
@@ -92,13 +91,11 @@ function showCard(index = 0) {
   index = Math.max(0, Math.min(index, currentQueue.length - 1));
   const card = currentQueue[index];
 
-  // FRONT: count + word
   front.innerHTML = `
     <div class="word-count">(${index + 1}/${currentQueue.length})</div>
     <div class="word">${escapeHTML(card.Word || 'No word')}</div>
   `;
 
-  // BACK: meaning, synonym, antonym (clearly separate)
   const meaning = card.Meanings || 'No definition';
   const synonym = card.Synonym || '—';
   const antonym = card.Antonym || '—';
@@ -121,14 +118,14 @@ function showCard(index = 0) {
   updateProgress();
 }
 
-/* update progress display */
+/* progress text */
 function updateProgress() {
   const total = currentQueue ? currentQueue.length : 0;
   const learnedCount = learned.length;
   progressEl.textContent = `Remaining: ${total} • Learned: ${learnedCount}`;
 }
 
-/* remove recall buttons and restore nav */
+/* remove recall buttons */
 function removeReviewButtons() {
   if (reviewButtonsContainer) {
     reviewButtonsContainer.remove();
@@ -139,7 +136,7 @@ function removeReviewButtons() {
   nextBtn.disabled = false;
 }
 
-/* show Do it again / Move on buttons */
+/* show recall buttons */
 function showRecallButtons() {
   if (reviewButtonsContainer) return;
   reviewButtonsContainer = document.createElement('div');
@@ -160,16 +157,13 @@ function showRecallButtons() {
   reviewButtonsContainer.appendChild(again);
   reviewButtonsContainer.appendChild(moveOn);
 
-  // Place review buttons below the card (inside wrapper)
   flashcard.parentElement.appendChild(reviewButtonsContainer);
-
-  // Hide flip and disable nav while judging
   flipBtn.style.display = 'none';
   prevBtn.disabled = true;
   nextBtn.disabled = true;
 }
 
-/* Handle user's judgement */
+/* handle recall */
 function handleReview(moveOn) {
   if (!currentQueue || currentQueue.length === 0) {
     showMasteryScreen();
@@ -179,77 +173,95 @@ function handleReview(moveOn) {
   const card = currentQueue[currentIndex];
 
   if (moveOn) {
-    // mark learned and remove from queue
     learned.push(card);
     currentQueue.splice(currentIndex, 1);
   } else {
-    // "Do it again": remove from current position and reinsert shortly after (after next card)
     const removed = currentQueue.splice(currentIndex, 1)[0];
     const insertPos = Math.min(currentIndex + 1, currentQueue.length);
     currentQueue.splice(insertPos, 0, removed);
-    // currentIndex stays the same to show the next card
   }
 
-  // If queue empty -> mastery
   if (currentQueue.length === 0) {
     showMasteryScreen();
     return;
   }
 
-  // clamp index
   if (currentIndex >= currentQueue.length) currentIndex = 0;
   showCard(currentIndex);
 }
 
-/* Mastery screen */
+/* mastery screen */
 function showMasteryScreen() {
-  front.innerHTML = `🎉 You have mastered ${learned.length} word${learned.length !== 1 ? 's' : ''}!`;
-  if (learned.length === 0) {
-    back.innerHTML = `<div style="text-align:center">No words learned yet.</div>`;
-  } else {
-    const list = learned.map(c => `<li>${escapeHTML(c.Word || '—')} — ${escapeHTML(c.Meanings || '—')}</li>`).join('');
-    back.innerHTML = `<div style="text-align:left; max-height:160px; overflow:auto"><ol>${list}</ol></div>`;
-  }
+  const currentLetter = letterSelect.value;
+  front.innerHTML = `🎉 You mastered all words in "${currentLetter}"!`;
+  back.innerHTML = '';
 
   removeReviewButtons();
-
-  // Disable nav and hide flip
   prevBtn.disabled = true;
   nextBtn.disabled = true;
   flipBtn.style.display = 'none';
 
-  // Add restart button
-  if (!document.getElementById('masteryRestart')) {
-    const restart = document.createElement('button');
-    restart.id = 'masteryRestart';
-    restart.className = 'btn btn-outline-primary mt-3';
-    restart.textContent = 'Restart this letter';
-    restart.addEventListener('click', () => {
-      const letter = letterSelect.value || 'all';
-      resetQueue(letter);
-      if (currentQueue.length > 0) {
-        showCard(0);
-        prevBtn.disabled = false;
-        nextBtn.disabled = false;
-        flipBtn.style.display = '';
-      } else {
-        front.textContent = `No words for "${letter}".`;
-        back.textContent = '';
-      }
-      restart.remove();
+  // container for actions
+  const actionWrap = document.createElement('div');
+  actionWrap.className = 'mt-3 d-flex flex-column align-items-center gap-2';
+
+  // restart current
+  const restart = document.createElement('button');
+  restart.className = 'btn btn-outline-primary';
+  restart.textContent = `Restart ${currentLetter}`;
+  restart.addEventListener('click', () => {
+    resetQueue(currentLetter);
+    if (currentQueue.length > 0) showCard(0);
+    restart.remove();
+    if (nextBtn) nextBtn.disabled = false;
+    if (prevBtn) prevBtn.disabled = false;
+    flipBtn.style.display = '';
+  });
+  actionWrap.appendChild(restart);
+
+  // next alphabet suggestion
+  const nextLetter = getNextAvailableLetter(currentLetter);
+  if (nextLetter) {
+    const nextBtnEl = document.createElement('button');
+    nextBtnEl.className = 'btn btn-success';
+    nextBtnEl.textContent = `Next Alphabet → ${nextLetter}`;
+    nextBtnEl.addEventListener('click', () => {
+      letterSelect.value = nextLetter;
+      resetQueue(nextLetter);
+      if (currentQueue.length > 0) showCard(0);
+      actionWrap.remove();
+      prevBtn.disabled = false;
+      nextBtn.disabled = false;
+      flipBtn.style.display = '';
     });
-    flashcard.parentElement.appendChild(restart);
+    actionWrap.appendChild(nextBtnEl);
+  } else {
+    // no more alphabets left
+    const doneMsg = document.createElement('div');
+    doneMsg.className = 'text-success fw-bold mt-2';
+    doneMsg.textContent = '🎉 You have mastered ALL words!';
+    actionWrap.appendChild(doneMsg);
   }
 
+  flashcard.parentElement.appendChild(actionWrap);
   updateProgress();
 }
 
-/* flip handler (should show back details) */
-function flipCard(e) {
-  // if flashcard has no cards, ignore
-  if (!currentQueue || currentQueue.length === 0) return;
+/* find next alphabet with words */
+function getNextAvailableLetter(currentLetter) {
+  const options = Array.from(letterSelect.options)
+    .filter(opt => !opt.disabled && opt.value !== 'all')
+    .map(opt => opt.value);
 
-  // prevent flip if clicking inside review buttons area
+  if (!currentLetter || currentLetter === 'all') return null;
+  const idx = options.indexOf(currentLetter);
+  if (idx >= 0 && idx < options.length - 1) return options[idx + 1];
+  return null;
+}
+
+/* flip */
+function flipCard(e) {
+  if (!currentQueue || currentQueue.length === 0) return;
   if (e && e.target && e.target.closest && e.target.closest('.review-buttons')) return;
 
   flipped = !flipped;
@@ -258,16 +270,11 @@ function flipCard(e) {
   back.setAttribute('aria-hidden', String(!flipped));
   front.setAttribute('aria-hidden', String(flipped ? 'true' : 'false'));
 
-  if (flipped) {
-    // show the back content and show recall buttons
-    showRecallButtons();
-  } else {
-    // hide recall controls
-    removeReviewButtons();
-  }
+  if (flipped) showRecallButtons();
+  else removeReviewButtons();
 }
 
-/* next / prev navigation */
+/* navigation */
 function nextCard() {
   if (!currentQueue || currentQueue.length === 0) return;
   let nxt = currentIndex + 1;
@@ -281,19 +288,17 @@ function prevCard() {
   showCard(p);
 }
 
-/* load vocab-data.json; if fetch fails, show helpful message */
+/* load vocab-data.json */
 async function loadVocab() {
   try {
     const resp = await fetch('vocab-data.json');
     if (!resp.ok) throw new Error('Failed to load vocab-data.json');
     vocabData = await resp.json();
-    // keep only items with a Word
     vocabData = vocabData.filter(c => c.Word && String(c.Word).trim().length > 0);
     vocabData.sort((a,b) => a.Word.toLowerCase().localeCompare(b.Word.toLowerCase()));
     updateLetterOptions();
   } catch (err) {
     console.error(err);
-    // Friendly fallback: show an example dataset so UI is visible for testing
     vocabData = [
       { Word: 'Venom', Meanings: 'poison, toxin', Synonym: 'toxin', Antonym: 'antidote' },
       { Word: 'Thickset', Meanings: 'stout or stocky', Synonym: 'sturdy', Antonym: 'slender' },
@@ -301,12 +306,11 @@ async function loadVocab() {
     ];
     vocabData.sort((a,b) => a.Word.toLowerCase().localeCompare(b.Word.toLowerCase()));
     updateLetterOptions();
-    // Also show an unobtrusive notice in progress
     progressEl.textContent += ' (using fallback sample data)';
   }
 }
 
-/* Event bindings */
+/* DOM events */
 document.addEventListener('DOMContentLoaded', () => {
   loadVocab();
 
@@ -324,15 +328,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // make sure clicks on buttons don't bubble to card and flip it
   prevBtn.addEventListener('click', (ev) => { ev.stopPropagation(); prevCard(); });
   nextBtn.addEventListener('click', (ev) => { ev.stopPropagation(); nextCard(); });
   flipBtn.addEventListener('click', (ev) => { ev.stopPropagation(); flipCard(ev); });
-
-  // clicking the card flips it (unless click came from review controls)
   flashcard.addEventListener('click', (ev) => flipCard(ev));
 
-  // keyboard shortcuts
   document.addEventListener('keydown', (ev) => {
     const key = ev.key;
     if (key === 'ArrowRight') nextCard();
