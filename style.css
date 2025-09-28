@@ -1,110 +1,147 @@
 :root{
-  --card-width: 340px;
-  --card-height: 220px;
+  --card-max-width: 720px;
+  --card-default-width: 420px;
+  --card-min-width: 260px;
+  --card-aspect-ratio: 16/9; /* width / height ratio */
   --card-radius: 12px;
   --card-padding: 18px;
+  --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --accent: #0d6efd;
 }
 
-/* container for perspective */
+/* Layout: ensure card scales with viewport */
+.flashcard-wrap {
+  padding: 6px;
+}
+
+/* Card container provides perspective for the 3D flip */
 .flashcard {
-  width: var(--card-width);
-  height: var(--card-height);
-  perspective: 1200px; /* important for 3d flip */
+  width: min(var(--card-default-width), 90vw);
+  max-width: var(--card-max-width);
+  min-width: var(--card-min-width);
+  aspect-ratio: var(--card-aspect-ratio);
+  perspective: 1200px;
   cursor: pointer;
-  margin: 0 auto;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* inner element that actually flips */
+/* inner element that flips */
 .flashcard-inner {
   width: 100%;
   height: 100%;
   position: relative;
-  transition: transform 0.6s;
   transform-style: preserve-3d;
-  border: 2px solid #333;
+  transition: transform 0.55s cubic-bezier(.2,.8,.2,1);
   border-radius: var(--card-radius);
-  background-color: #fff;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  box-shadow: var(--shadow);
+  background: linear-gradient(180deg,#ffffff,#fbfbfd);
+  border: 1px solid rgba(20,20,20,0.06);
   padding: var(--card-padding);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  box-sizing: border-box;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
-/* When .flashcard has class flipped, rotate inner */
+/* When .flashcard has .flipped, rotate the inner */
 .flashcard.flipped .flashcard-inner {
   transform: rotateY(180deg);
 }
 
-/* front and back faces */
-.front, .back {
+/* Faces (front / back) */
+.face {
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  text-align: center;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
   padding: var(--card-padding);
   box-sizing: border-box;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  color: #222;
+  color: #111827;
 }
 
-/* back is rotated so that when inner is rotated it shows */
-.back {
+/* Front shows word & index */
+.face.front {
+  transform: rotateY(0deg);
+}
+
+/* Back rotates away, become visible when inner rotates */
+.face.back {
   transform: rotateY(180deg);
+  text-align:left;
+  overflow:auto;
 }
 
-/* small styling for word and counts */
+/* Word heading and count */
 .front .word-count {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 8px;
+  font-size: 0.86rem;
+  color: #6c757d;
+  margin-bottom: 6px;
 }
 .front .word {
-  font-size: 22px;
+  font-size: clamp(1.25rem, 2.6vw, 1.9rem);
   font-weight: 700;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.2px;
+  word-break: break-word;
 }
 
-/* details in back */
+/* Back card details */
 .back .card-details {
-  text-align: left;
-  width: 100%;
-  max-width: 100%;
-  overflow: auto;
+  width:100%;
 }
 .back .card-details p {
-  margin: 6px 0;
-  line-height: 1.25;
+  margin: 8px 0;
+  line-height: 1.3;
+  font-size: clamp(0.9rem, 1.8vw, 1rem);
 }
 .back .card-details strong {
-  display: inline-block;
-  width: 80px;
-  color: #111;
+  display:inline-block;
+  width: 82px;
+  color: #0b1320;
 }
 
-/* review buttons area (inserted dynamically) */
+/* Review buttons dynamically inserted (kept responsive) */
 .review-buttons {
   display:flex;
-  justify-content:center;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-/* ensure controls are visually separated */
-.controls {
-  width: var(--card-width);
-  display:flex;
-  justify-content:center;
   gap:8px;
+  justify-content:center;
+  margin-top: 12px;
+  flex-wrap:wrap;
 }
 
-/* responsive */
+/* Controls styling */
+.controls button {
+  min-width: 92px;
+}
+
+/* Progress text */
+#progress {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+/* Small screens: stack controls vertically for usability */
 @media (max-width: 420px) {
-  :root { --card-width: 300px; --card-height: 200px; }
+  .controls {
+    flex-direction: column;
+    gap: 10px;
+    align-items:center;
+  }
   .back .card-details strong { width: 70px; }
 }
+
+/* Focus outline for keyboard users */
+.flashcard:focus,
+.controls button:focus,
+select:focus {
+  outline: 3px solid rgba(13,110,253,0.14);
+  outline-offset: 3px;
+}
+
+/* Prevent text selection while tapping quickly */
+.flashcard, .controls button { user-select: none; -webkit-user-select: none; touch-action: manipulation; }
