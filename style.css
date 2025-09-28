@@ -1,28 +1,110 @@
-.flashcard { 
-  width: 300px; 
-  height: 180px; 
-  border: 2px solid #333; 
-  border-radius: 10px; 
-  display: flex; 
-  justify-content: center; 
-  align-items: center; 
-  text-align: center; 
-  padding: 20px; 
+:root{
+  --card-width: 340px;
+  --card-height: 220px;
+  --card-radius: 12px;
+  --card-padding: 18px;
+}
+
+/* container for perspective */
+.flashcard {
+  width: var(--card-width);
+  height: var(--card-height);
+  perspective: 1200px; /* important for 3d flip */
   cursor: pointer;
-  transition: transform 0.6s;
-  background-color: #fff;
+  margin: 0 auto;
+}
+
+/* inner element that actually flips */
+.flashcard-inner {
+  width: 100%;
+  height: 100%;
   position: relative;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+  border: 2px solid #333;
+  border-radius: var(--card-radius);
+  background-color: #fff;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  padding: var(--card-padding);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.flashcard.flipped { transform: rotateY(180deg); }
-.front, .back { 
-  position: absolute; 
-  width: 100%; 
-  height: 100%; 
-  backface-visibility: hidden; 
-  display: flex; 
-  justify-content: center; 
-  align-items: center; 
-  text-align: center; 
+
+/* When .flashcard has class flipped, rotate inner */
+.flashcard.flipped .flashcard-inner {
+  transform: rotateY(180deg);
 }
-.back { transform: rotateY(180deg); }
-.review-buttons { margin-top: 15px; }
+
+/* front and back faces */
+.front, .back {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  text-align: center;
+  padding: var(--card-padding);
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  color: #222;
+}
+
+/* back is rotated so that when inner is rotated it shows */
+.back {
+  transform: rotateY(180deg);
+}
+
+/* small styling for word and counts */
+.front .word-count {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+.front .word {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+/* details in back */
+.back .card-details {
+  text-align: left;
+  width: 100%;
+  max-width: 100%;
+  overflow: auto;
+}
+.back .card-details p {
+  margin: 6px 0;
+  line-height: 1.25;
+}
+.back .card-details strong {
+  display: inline-block;
+  width: 80px;
+  color: #111;
+}
+
+/* review buttons area (inserted dynamically) */
+.review-buttons {
+  display:flex;
+  justify-content:center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ensure controls are visually separated */
+.controls {
+  width: var(--card-width);
+  display:flex;
+  justify-content:center;
+  gap:8px;
+}
+
+/* responsive */
+@media (max-width: 420px) {
+  :root { --card-width: 300px; --card-height: 200px; }
+  .back .card-details strong { width: 70px; }
+}
