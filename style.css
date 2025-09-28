@@ -1,59 +1,131 @@
-:root{
-  --card-max: 760px;
-  --card-aspect: 16/9;
-  --muted: #6c757d;
-  --accent: #0d6efd;
-  --radius: 12px;
+:root {
+  --card-max-width: 480px;
+  --card-min-width: 260px;
 }
-*{box-sizing:border-box}
-body{ font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; background: #fff; color:#111; padding:18px; }
 
-.app{ max-width:980px; margin:0 auto; }
-
-.flashcard-area{ display:flex; flex-direction:column; align-items:center; gap:8px; }
-
-.flashcard{
-  width: min(var(--card-max), 92vw);
-  aspect-ratio: var(--card-aspect);
-  perspective: 1200px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+body {
+  font-family: Arial, sans-serif;
+  background: #fafafa;
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
 }
-.flashcard-inner{
-  width:100%;
-  height:100%;
-  border-radius: var(--radius);
-  background: linear-gradient(180deg,#ffffff,#fbfbff);
-  box-shadow: 0 20px 40px rgba(10,18,30,0.06);
-  border:1px solid rgba(0,0,0,0.04);
-  transition: transform 0.55s cubic-bezier(.2,.8,.2,1);
+
+.container {
+  max-width: 800px;
+  width: 100%;
+  text-align: center;
+}
+
+h1 {
+  margin-bottom: 10px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.flashcard-wrap {
+  perspective: 1000px;
+}
+
+.flashcard {
+  position: relative;
+  width: 100%;
+  max-width: var(--card-max-width);
+  min-width: var(--card-min-width);
+  min-height: 180px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  background: #fff;
+  transition: transform 0.6s;
   transform-style: preserve-3d;
-  padding:22px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  position:relative;
-  overflow:hidden;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.flashcard:hover .flashcard-inner{ transform: translateY(-6px); }
-.flashcard.flipped .flashcard-inner{ transform: rotateY(180deg) translateY(-6px); }
 
-.face{ position:absolute; inset:0; backface-visibility:hidden; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:12px 18px; }
-.face.back{ transform: rotateY(180deg); text-align:left; overflow:auto; }
+.flashcard.flipped {
+  transform: rotateY(180deg);
+}
 
-.front .word-count{ color:var(--muted); font-size:0.9rem; margin-bottom:8px; }
-.front .word{ font-size: clamp(1.2rem, 3.5vw, 2rem); font-weight:700; word-break:break-word; }
+.face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backface-visibility: hidden;
+  border-radius: 10px;
+  text-align: center;
+  white-space: pre-line;
+}
 
-.back .card-details p{ margin:8px 0; line-height:1.35; font-size:1rem; }
-.back .card-details strong{ width:90px; display:inline-block; }
+.front {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
 
-.review-buttons{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
-.review-buttons .btn{ min-width:120px; }
+.back {
+  transform: rotateY(180deg);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
 
-.controls .btn{ min-width:96px; border-radius:10px; }
+.review-buttons {
+  margin-top: 15px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 
-@media (max-width:640px){
-  .flashcard-inner{ padding:14px; }
-  .back .card-details strong{ width:70px; }
-  .review-buttons .btn{ min-width:96px; padding:8px 10px; }
+.review-buttons button {
+  font-size: 14px;
+  padding: 8px 14px;
+  border-radius: 6px;
+}
+
+.completion {
+  text-align: center;
+  padding: 20px;
+}
+
+.completion h2 {
+  color: #2e7d32;
+  margin-bottom: 10px;
+}
+
+.completion button {
+  margin: 10px;
+  padding: 10px 16px;
+  border: none;
+  background: #1976d2;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.completion button:hover {
+  background: #1565c0;
+}
+
+@media (max-width: 600px) {
+  .flashcard {
+    min-height: 150px;
+    padding: 12px;
+  }
+
+  .controls {
+    flex-direction: column;
+    gap: 6px;
+  }
 }
