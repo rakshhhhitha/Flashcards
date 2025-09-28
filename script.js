@@ -1,145 +1,123 @@
 // script.js
-// Robust loader + UI for vocab-data.json (handles array or grouped-by-letter formats)
+// Robust loader + correct flip logic (back always shows Meaning/Synonym/Antonym),
+// responsive improvements and small UI niceties.
 
 const letterSelect = document.getElementById('letterSelect');
-const progressEl = document.getElementById('progress');
+const progressText = document.getElementById('progressText');
+const progressBar = document.getElementById('progressBar');
 const messageEl = document.getElementById('message');
 
 const flashcard = document.getElementById('flashcard');
 const frontFace = flashcard.querySelector('.face.front');
 const backFace = flashcard.querySelector('.face.back');
 
+const reviewContainer = document.getElementById('reviewContainer');
+
 const prevBtn = document.getElementById('prev');
 const flipBtn = document.getElementById('flip');
 const nextBtn = document.getElementById('next');
 
-let dataset = {};      // { "A": [ {Word, Meanings, Synonym, Antonym}, ... ], ... }
-let letters = [];      // sorted available letters
+let dataset = {};        // grouped dataset { A: [...], B: [...] }
+let letters = [];        // available letters sorted
 let currentLetter = null;
-let queue = [];        // current working queue (array of card objects)
-let learned = [];      // learned list for current letter (session)
+let originalCount = 0;   // number of cards at start for current letter (for %)
+let queue = [];          // working queue (cards left)
+let learned = [];        // learned cards this session (for current letter)
 let currentIndex = 0;
 let flipped = false;
-let reviewButtonsContainer = null;
+let reviewButtons = null;
 
-// helpers
-function escapeHTML(s){ if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function setProgress(text){ progressEl.textContent = text || ''; }
-function setMessage(text){ messageEl.innerHTML = text || ''; }
+// HTML escape
+function esc(s){ if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function setProgressText(s){ progressText.textContent = s || ''; }
+function setMessage(s){ messageEl.innerHTML = s || ''; }
+function setProgressBar(percent){
+  progressBar.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+}
 
-// Attempt to parse many shapes of vocab-data.json
-function parseData(raw) {
-  if (Array.isArray(raw)) {
+// parse dataset that may be an array or object
+function parseData(raw){
+  if (Array.isArray(raw)){
     const map = {};
     raw.forEach(item => {
       const w = (item.Word || item.word || '').toString().trim();
       if (!w) return;
-      const letter = w[0].toUpperCase();
-      if (!map[letter]) map[letter] = [];
-      map[letter].push(item);
+      const L = w[0].toUpperCase();
+      if (!map[L]) map[L] = [];
+      map[L].push(item);
     });
-    Object.keys(map).forEach(k => {
-      map[k].sort((a,b) => (a.Word || a.word || '').toLowerCase().localeCompare((b.Word || b.word || '').toLowerCase()));
-    });
+    Object.keys(map).forEach(k => map[k].sort((a,b)=> (a.Word||a.word).toLowerCase().localeCompare((b.Word||b.word).toLowerCase())));
     return map;
   }
-
-  if (raw && typeof raw === 'object') {
-    // If keys are single letters -> treat as grouped object
+  if (raw && typeof raw === 'object'){
+    // grouped by letter already?
     const keys = Object.keys(raw || {});
     const letterKeys = keys.filter(k => /^[A-Za-z]$/.test(k));
-    if (letterKeys.length >= 1) {
+    if (letterKeys.length) {
       const map = {};
-      letterKeys.sort().forEach(k => {
-        map[k.toUpperCase()] = Array.isArray(raw[k]) ? raw[k].slice() : [];
-      });
-      Object.keys(map).forEach(k => {
-        map[k].sort((a,b) => ((a.Word || a.word || '')).toLowerCase().localeCompare((b.Word || b.word || '').toLowerCase()));
-      });
+      letterKeys.sort().forEach(k => { map[k.toUpperCase()] = Array.isArray(raw[k]) ? raw[k].slice() : []; });
+      Object.keys(map).forEach(k => map[k].sort((a,b)=> ((a.Word||a.word||'')).toLowerCase().localeCompare((b.Word||b.word||'').toLowerCase())));
       return map;
     }
-
-    // wrapper patterns: { data: [...]} or { words: [...] }
+    // wrapper: data: [...]
     const wrappers = ['data','words','items','vocab'];
-    for (const w of wrappers) {
-      if (Array.isArray(raw[w])) return parseData(raw[w]);
-    }
-
-    // fallback: find object values that look like arrays of words
+    for (const w of wrappers) if (Array.isArray(raw[w])) return parseData(raw[w]);
+    // fallback: detect keys that are arrays of words
     const maybe = {};
     keys.forEach(k => {
-      if (Array.isArray(raw[k]) && raw[k].length > 0 && (raw[k][0].Word || raw[k][0].word)) {
-        maybe[k.toUpperCase()] = raw[k].slice();
-      }
+      if (Array.isArray(raw[k]) && raw[k].length && (raw[k][0].Word || raw[k][0].word)) maybe[k.toUpperCase()] = raw[k].slice();
     });
     if (Object.keys(maybe).length) {
-      Object.keys(maybe).forEach(k => {
-        maybe[k].sort((a,b)=>((a.Word||a.word||'').toLowerCase().localeCompare((b.Word||b.word||'').toLowerCase())));
-      });
+      Object.keys(maybe).forEach(k => maybe[k].sort((a,b)=>((a.Word||a.word||'')).toLowerCase().localeCompare((b.Word||b.word||'').toLowerCase())));
       return maybe;
     }
   }
-
   return null;
 }
 
-function populateLetters(map) {
+// populate letter select
+function populateLetters(map){
   letterSelect.innerHTML = '';
   letters = Object.keys(map).sort();
   if (!letters.length) {
-    const opt = document.createElement('option');
-    opt.textContent = '—';
-    opt.disabled = true;
-    letterSelect.appendChild(opt);
+    const opt = document.createElement('option'); opt.textContent = '—'; opt.disabled = true; letterSelect.appendChild(opt);
     return;
   }
-  // add 'All' option at top
-  const allOpt = document.createElement('option');
-  allOpt.value = 'all';
-  allOpt.textContent = 'All';
-  letterSelect.appendChild(allOpt);
-
+  // 'All' option
+  const allOpt = document.createElement('option'); allOpt.value = 'all'; allOpt.textContent = 'All'; letterSelect.appendChild(allOpt);
   letters.forEach(l => {
-    const opt = document.createElement('option');
-    opt.value = l;
-    opt.textContent = l;
-    letterSelect.appendChild(opt);
+    const o = document.createElement('option'); o.value = l; o.textContent = l; letterSelect.appendChild(o);
   });
 }
 
-function resetQueue(selection) {
+// reset queue for selected letter (or 'all')
+function resetQueue(selection){
   if (selection === 'all') {
-    // flatten all letters into one queue
     queue = [];
-    const sortedLetters = Object.keys(dataset).sort();
-    sortedLetters.forEach(l => {
-      (dataset[l] || []).forEach(card => queue.push(card));
-    });
-    queue.sort((a,b) => (a.Word||'').toLowerCase().localeCompare((b.Word||'').toLowerCase()));
+    Object.keys(dataset).sort().forEach(l => (dataset[l]||[]).forEach(card => queue.push(card)));
+    queue.sort((a,b)=> (a.Word||a.word||'').toLowerCase().localeCompare((b.Word||b.word||'').toLowerCase()));
     currentLetter = 'all';
   } else {
     currentLetter = selection;
     queue = (dataset[selection] || []).slice();
   }
+  originalCount = queue.length;
   learned = [];
   currentIndex = 0;
   flipped = false;
   flashcard.classList.remove('flipped');
   removeReviewButtons();
   renderCard();
-  setProgress(`Remaining: ${queue.length} • Learned: ${learned.length}`);
-  setMessage('');
+  updateProgressUI();
 }
 
-// Render card front/back and update UI state
-function renderCard() {
-  if (!queue.length) {
-    frontFace.innerHTML = `<div style="color:var(--muted)">No words for ${escapeHTML(currentLetter || 'this selection')}</div>`;
+// render current card
+function renderCard(){
+  if (!queue.length){
+    frontFace.innerHTML = `<div style="color:var(--muted)">No words for ${esc(currentLetter || 'this selection')}</div>`;
     backFace.innerHTML = '';
-    setProgress(`Remaining: 0 • Learned: ${learned.length}`);
-    prevBtn.disabled = true;
-    nextBtn.disabled = true;
-    flipBtn.disabled = true;
+    setProgressText(`Remaining: 0 • Learned: ${learned.length}`);
+    prevBtn.disabled = true; nextBtn.disabled = true; flipBtn.disabled = true;
     return;
   }
 
@@ -149,76 +127,78 @@ function renderCard() {
   const synonym = card.Synonym || card.synonym || card.Synonyms || '';
   const antonym = card.Antonym || card.antonym || '';
 
-  frontFace.innerHTML = `<div class="word-count">(${currentIndex + 1}/${queue.length})</div>
-                         <div class="word">${escapeHTML(word)}</div>`;
+  // front: word + count
+  frontFace.innerHTML = `<div class="word-count">(${currentIndex+1}/${queue.length})</div>
+                         <div class="word">${esc(word)}</div>`;
 
+  // back: meaning/synonym/antonym — this is the important part
   backFace.innerHTML = `<div class="card-details">
-                         <p><strong>Meaning:</strong> ${escapeHTML(meaning || '—')}</p>
-                         <p><strong>Synonym:</strong> ${escapeHTML(synonym || '—')}</p>
-                         <p><strong>Antonym:</strong> ${escapeHTML(antonym || '—')}</p>
+                          <p><strong>Meaning:</strong> ${esc(meaning || '—')}</p>
+                          <p><strong>Synonym:</strong> ${esc(synonym || '—')}</p>
+                          <p><strong>Antonym:</strong> ${esc(antonym || '—')}</p>
                         </div>`;
 
-  setProgress(`Remaining: ${queue.length - currentIndex - 1} • Learned: ${learned.length}`);
+  // update UI states
+  const remaining = queue.length - currentIndex - 1;
+  setProgressText(`Remaining: ${remaining} • Learned: ${learned.length}`);
+  const percent = originalCount ? Math.round((learned.length / originalCount) * 100) : 0;
+  setProgressBar(percent);
 
-  prevBtn.disabled = (queue.length <= 1); // if only one card, prev meaningless
+  prevBtn.disabled = (queue.length <= 1);
   nextBtn.disabled = false;
   flipBtn.disabled = false;
 
-  // ensure correct face visible
+  // ensure correct face visibility
   if (!flipped) {
     flashcard.classList.remove('flipped');
-    frontFace.setAttribute('aria-hidden', 'false');
-    backFace.setAttribute('aria-hidden', 'true');
+    frontFace.setAttribute('aria-hidden','false');
+    backFace.setAttribute('aria-hidden','true');
   } else {
     flashcard.classList.add('flipped');
-    frontFace.setAttribute('aria-hidden', 'true');
-    backFace.setAttribute('aria-hidden', 'false');
+    frontFace.setAttribute('aria-hidden','true');
+    backFace.setAttribute('aria-hidden','false');
   }
 }
 
-// Review buttons
-function showReviewButtons() {
-  if (reviewButtonsContainer) return;
-  reviewButtonsContainer = document.createElement('div');
-  reviewButtonsContainer.className = 'review-buttons';
+// review buttons
+function showReviewButtons(){
+  if (reviewButtons) return;
+  reviewButtons = document.createElement('div');
+  reviewButtons.className = 'review-buttons';
 
-  const againBtn = document.createElement('button');
-  againBtn.textContent = 'Do it again';
-  againBtn.className = 'btn btn-outline-danger btn-sm';
-  againBtn.addEventListener('click', (e) => { e.stopPropagation(); handleReview(false); });
+  const again = document.createElement('button');
+  again.className = 'btn btn-outline-danger';
+  again.textContent = 'Do it again';
+  again.addEventListener('click', (ev)=>{ ev.stopPropagation(); handleReview(false); });
 
-  const moveOnBtn = document.createElement('button');
-  moveOnBtn.textContent = 'Move on';
-  moveOnBtn.className = 'btn btn-success btn-sm';
-  moveOnBtn.addEventListener('click', (e) => { e.stopPropagation(); handleReview(true); });
+  const moveOn = document.createElement('button');
+  moveOn.className = 'btn btn-success';
+  moveOn.textContent = 'Move on';
+  moveOn.addEventListener('click', (ev)=>{ ev.stopPropagation(); handleReview(true); });
 
-  reviewButtonsContainer.appendChild(againBtn);
-  reviewButtonsContainer.appendChild(moveOnBtn);
+  reviewButtons.appendChild(again);
+  reviewButtons.appendChild(moveOn);
 
-  flashcard.parentElement.appendChild(reviewButtonsContainer);
+  reviewContainer.appendChild(reviewButtons);
 
-  // hide flip & disable nav while choosing
-  flipBtn.style.display = 'none';
-  prevBtn.disabled = true;
-  nextBtn.disabled = true;
+  // disable nav while choosing
+  prevBtn.disabled = true; nextBtn.disabled = true; flipBtn.style.display = 'none';
 }
 
-function removeReviewButtons() {
-  if (reviewButtonsContainer) {
-    reviewButtonsContainer.remove();
-    reviewButtonsContainer = null;
-  }
+function removeReviewButtons(){
+  if (!reviewButtons) return;
+  reviewButtons.remove();
+  reviewButtons = null;
   flipBtn.style.display = '';
-  prevBtn.disabled = false;
-  nextBtn.disabled = false;
+  prevBtn.disabled = false; nextBtn.disabled = false;
 }
 
-// When user clicks Do it again / Move on
-function handleReview(moveOn) {
+// handle the review choice
+function handleReview(moveOn){
   if (!queue.length) return;
   const card = queue[currentIndex];
 
-  if (moveOn) {
+  if (moveOn){
     learned.push(card);
     queue.splice(currentIndex, 1);
   } else {
@@ -236,12 +216,15 @@ function handleReview(moveOn) {
   if (currentIndex >= queue.length) currentIndex = 0;
   flipped = false;
   renderCard();
+  updateProgressUI();
 }
 
-// flip card
-function flipCard(e) {
+// flipping logic (important: back shows meaning/syn/synonym)
+function flipCard(e){
   if (!queue.length) return;
+  // prevent flipping when clicking review area
   if (e && e.target && e.target.closest && e.target.closest('.review-buttons')) return;
+
   flipped = !flipped;
   if (flipped) {
     flashcard.classList.add('flipped');
@@ -252,15 +235,15 @@ function flipCard(e) {
   }
 }
 
-// prev/next navigation (wrap-around)
-function nextCard() {
+// navigation
+function nextCard(){
   if (!queue.length) return;
   currentIndex = (currentIndex + 1) % queue.length;
   flipped = false;
   removeReviewButtons();
   renderCard();
 }
-function prevCard() {
+function prevCard(){
   if (!queue.length) return;
   currentIndex = (currentIndex - 1 + queue.length) % queue.length;
   flipped = false;
@@ -268,54 +251,48 @@ function prevCard() {
   renderCard();
 }
 
-// completion screen when queue empty
-function showCompletionScreen() {
+// completion UI
+function showCompletionScreen(){
   const letter = currentLetter;
   frontFace.innerHTML = '';
   backFace.innerHTML = '';
 
-  const container = document.createElement('div');
-  container.className = 'completion';
-  container.innerHTML = `<h2>🎉 You have mastered all words for <strong>${escapeHTML(letter)}</strong>!</h2>
-                         <p>Great job — choose an action below.</p>`;
+  const box = document.createElement('div');
+  box.className = 'completion';
+  box.innerHTML = `<h2>🎉 You mastered <strong>${esc(letter)}</strong>!</h2>
+                   <p>Nice work — move to the next alphabet or restart this one.</p>`;
 
   const actions = document.createElement('div');
   actions.className = 'actions';
-
   const restart = document.createElement('button');
   restart.className = 'btn btn-outline-primary';
-  restart.textContent = `Restart ${escapeHTML(letter)}`;
-  restart.addEventListener('click', () => {
-    resetQueue(letter);
-    container.remove();
-  });
+  restart.textContent = `Restart ${esc(letter)}`;
+  restart.addEventListener('click', ()=> { resetQueue(letter); box.remove(); });
 
   const nextAlpha = document.createElement('button');
   nextAlpha.className = 'btn btn-success';
   nextAlpha.textContent = 'Next Alphabet →';
-  nextAlpha.addEventListener('click', () => {
-    goToNextAlphabet();
-    container.remove();
+  nextAlpha.addEventListener('click', ()=>{
+    goToNextAlphabet(); box.remove();
   });
 
   actions.appendChild(restart);
   actions.appendChild(nextAlpha);
-  container.appendChild(actions);
+  box.appendChild(actions);
 
-  frontFace.appendChild(container);
+  frontFace.appendChild(box);
 
-  // disable controls while at completion
-  prevBtn.disabled = true;
-  nextBtn.disabled = true;
-  flipBtn.style.display = 'none';
+  // disable controls
+  prevBtn.disabled = true; nextBtn.disabled = true; flipBtn.style.display = 'none';
 
-  setProgress(`Remaining: 0 • Learned: ${learned.length}`);
+  setProgressText(`Remaining: 0 • Learned: ${learned.length}`);
+  setProgressBar(100);
 }
 
-// find and go to next available letter (skips letters without words)
-function goToNextAlphabet() {
+// go to next available letter
+function goToNextAlphabet(){
   const idx = letters.indexOf(currentLetter);
-  for (let i = idx + 1; i < letters.length; ++i) {
+  for (let i = idx + 1; i < letters.length; ++i){
     const l = letters[i];
     if (dataset[l] && dataset[l].length) {
       letterSelect.value = l;
@@ -323,84 +300,101 @@ function goToNextAlphabet() {
       return;
     }
   }
-  // nothing more
   setMessage('🏆 You have completed all available alphabets!');
 }
 
-// initialize: fetch and parse file, then populate select
-async function init() {
-  setProgress('Loading vocab-data.json...');
+// update progress UI (progress bar + text)
+function updateProgressUI(){
+  setProgressText(`Remaining: ${queue.length} • Learned: ${learned.length}`);
+  const percent = originalCount ? Math.round((learned.length / originalCount) * 100) : 0;
+  setProgressBar(percent);
+}
+
+// init: fetch and prepare dataset
+async function init(){
+  setProgressText('Loading vocabulary...');
   setMessage('');
 
   try {
     const resp = await fetch('vocab-data.json', { cache: 'no-store' });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const raw = await resp.json();
     const parsed = parseData(raw);
-    if (!parsed || Object.keys(parsed).length === 0) {
-      throw new Error('Parsed dataset is empty or unknown shape.');
-    }
+    if (!parsed || Object.keys(parsed).length === 0) throw new Error('No usable data after parsing.');
     dataset = parsed;
   } catch (err) {
-    console.error('Failed to load vocab-data.json:', err);
+    console.error('Failed loading vocab-data.json', err);
     if (location.protocol === 'file:') {
-      setMessage('⚠️ Loading local files via file:// may be blocked by the browser. Run a local server (e.g. `python3 -m http.server`) and open http://localhost:8000');
+      setMessage('⚠️ fetch() of local files is frequently blocked. Run a local server (e.g. python3 -m http.server 8000).');
     } else {
       setMessage('⚠️ Failed to load vocab-data.json — using a small fallback sample for testing.');
     }
-    // fallback sample so UI is usable
     const fallback = [
-      { Word: 'Apple', Meanings: 'A fruit', Synonym: 'Fruit', Antonym: '—' },
-      { Word: 'Abridge', Meanings: 'To shorten', Synonym: 'Condense', Antonym: 'Expand' },
-      { Word: 'Zany', Meanings: 'Clownish', Synonym: 'Wacky', Antonym: 'Sober' },
-      { Word: 'Zeal', Meanings: 'Enthusiasm', Synonym: 'Passion', Antonym: 'Apathy' }
+      { Word:'Apple', Meanings:'A fruit', Synonym:'Fruit', Antonym:'—' },
+      { Word:'Abridge', Meanings:'To shorten', Synonym:'Condense', Antonym:'Expand' },
+      { Word:'Zany', Meanings:'Clownish', Synonym:'Wacky', Antonym:'Sober' },
+      { Word:'Zeal', Meanings:'Enthusiasm', Synonym:'Passion', Antonym:'Apathy' }
     ];
     dataset = parseData(fallback);
   }
 
-  // build letter list and populate select
   letters = Object.keys(dataset).sort();
   populateLetters(dataset);
 
-  if (letters.length === 0) {
-    setProgress('No words found in dataset.');
-    setMessage('Your vocab-data.json appears empty or has an unexpected shape. See console for details.');
-    frontFace.innerHTML = `<div style="color:var(--muted)">No data available</div>`;
+  if (!letters.length) {
+    setProgressText('No words found.');
+    setMessage('Your vocab-data.json is empty or has an unexpected shape.');
+    frontFace.innerHTML = `<div style="color:var(--muted)">No data</div>`;
     return;
   }
 
-  // choose first available letter by default
+  // Choose first available letter
   const first = letters[0];
   letterSelect.value = first;
   resetQueue(first);
-  setProgress(`Remaining: ${queue.length} • Learned: ${learned.length}`);
+  setProgressText(`Remaining: ${queue.length} • Learned: ${learned.length}`);
+}
+
+// populate select UI
+function populateLetters(map){
+  letterSelect.innerHTML = '';
+  const allOpt = document.createElement('option'); allOpt.value = 'all'; allOpt.textContent = 'All'; letterSelect.appendChild(allOpt);
+  letters = Object.keys(map).sort();
+  letters.forEach(l => {
+    const o = document.createElement('option'); o.value = l; o.textContent = l; letterSelect.appendChild(o);
+  });
 }
 
 // wire events
-document.addEventListener('DOMContentLoaded', () => {
-  // ensure flashcard inner exists (in case HTML changed)
-  if (!flashcard.querySelector('.face.front')) {
+document.addEventListener('DOMContentLoaded', ()=>{
+  // ensure faces exist
+  if (!frontFace || !backFace) {
     flashcard.innerHTML = `<div class="flashcard-inner"><div class="face front"></div><div class="face back"></div></div>`;
   }
 
   init();
 
-  letterSelect.addEventListener('change', (e) => {
-    const val = e.target.value;
-    if (val === 'all') resetQueue('all');
-    else resetQueue(val);
+  letterSelect.addEventListener('change', (e)=>{
+    const v = e.target.value;
+    if (v === 'all') resetQueue('all');
+    else resetQueue(v);
   });
 
-  prevBtn.addEventListener('click', (e) => { e.stopPropagation(); prevCard(); });
-  nextBtn.addEventListener('click', (e) => { e.stopPropagation(); nextCard(); });
-  flipBtn.addEventListener('click', (e) => { e.stopPropagation(); flipCard(e); });
+  prevBtn.addEventListener('click', (e)=>{ e.stopPropagation(); prevCard(); });
+  nextBtn.addEventListener('click', (e)=>{ e.stopPropagation(); nextCard(); });
+  flipBtn.addEventListener('click', (e)=>{ e.stopPropagation(); flipCard(e); });
 
-  flashcard.addEventListener('click', (e) => flipCard(e));
+  // clicking card toggles flip (but ignore clicks inside review buttons)
+  flashcard.addEventListener('click', (e)=> flipCard(e));
 
   // keyboard shortcuts
-  document.addEventListener('keydown', (ev) => {
+  document.addEventListener('keydown', (ev)=>{
     if (ev.key === 'ArrowLeft') prevCard();
     else if (ev.key === 'ArrowRight') nextCard();
     else if (ev.key === ' ' || ev.key === 'Spacebar') { ev.preventDefault(); flipCard(ev); }
   });
 });
+
+// helper prev/next wrappers used in event wiring
+function prevCard(){ prevBtn.disabled || (currentIndex = (currentIndex - 1 + queue.length) % queue.length, flipped = false, removeReviewButtons(), renderCard()); }
+function nextCard(){ nextBtn.disabled || (currentIndex = (currentIndex + 1) % queue.length, flipped = false, removeReviewButtons(), renderCard()); }
