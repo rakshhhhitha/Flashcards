@@ -1,4 +1,4 @@
-let dataset = {};
+let dataset = {}; // will hold grouped words by alphabet
 let currentAlphabet = "A";
 let currentIndex = 0;
 let showingFront = true;
@@ -13,21 +13,41 @@ const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
 const flipBtn = document.getElementById("flipBtn");
 
-// Load dataset
+// Load dataset and group by alphabet
 fetch("vocab-data.json")
   .then(res => res.json())
   .then(data => {
-    dataset = data;
+    // Group words by first letter
+    dataset = {};
+    data.forEach(item => {
+      if (!item.Word) return;
+      const letter = item.Word[0].toUpperCase();
+      if (!dataset[letter]) dataset[letter] = [];
+      dataset[letter].push(item);
+    });
+
+    // Sort words inside each letter
+    for (const key in dataset) {
+      dataset[key].sort((a, b) => a.Word.localeCompare(b.Word));
+    }
 
     // Populate dropdown
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(l => {
       const opt = document.createElement("option");
       opt.value = l;
       opt.textContent = l;
+      if (!dataset[l]) opt.disabled = true;
       alphabetSelect.appendChild(opt);
     });
 
-    loadAlphabet("A");
+    // Load the first available letter
+    const firstAvailable = Object.keys(dataset)[0] || "A";
+    alphabetSelect.value = firstAvailable;
+    loadAlphabet(firstAvailable);
+  })
+  .catch(err => {
+    console.error("Error loading vocab-data.json", err);
+    flashcard.innerHTML = "<p>⚠️ Failed to load vocab data.</p>";
   });
 
 alphabetSelect.addEventListener("change", () => {
@@ -43,7 +63,7 @@ prevBtn.addEventListener("click", () => {
 });
 
 nextBtn.addEventListener("click", () => {
-  if (currentIndex < dataset[currentAlphabet].length - 1) {
+  if (currentIndex < (dataset[currentAlphabet]?.length || 0) - 1) {
     currentIndex++;
     showingFront = true;
     renderCard();
@@ -77,9 +97,9 @@ function renderCard() {
   flashcard.innerHTML = showingFront
     ? `<h2>${wordData.Word}</h2>`
     : `<div>
-        <p><strong>Meaning:</strong> ${wordData.Meanings}</p>
-        <p><strong>Synonym:</strong> ${wordData.Synonym}</p>
-        <p><strong>Antonym:</strong> ${wordData.Antonym}</p>
+        <p><strong>Meaning:</strong> ${wordData.Meanings || "—"}</p>
+        <p><strong>Synonym:</strong> ${wordData.Synonym || "—"}</p>
+        <p><strong>Antonym:</strong> ${wordData.Antonym || "—"}</p>
       </div>`;
 
   remainingCount.textContent = `Remaining: ${words.length - currentIndex - 1}`;
@@ -110,13 +130,20 @@ function moveToNextAlphabet(current) {
   const alphabets = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   let index = alphabets.indexOf(current);
   if (index !== -1 && index < alphabets.length - 1) {
-    loadAlphabet(alphabets[index + 1]);
-    alphabetSelect.value = alphabets[index + 1];
-  } else {
-    flashcard.innerHTML = `
-      <div class="completion">
-        <h2>🏆 Amazing! You’ve completed all alphabets!</h2>
-      </div>
-    `;
+    let nextLetter = alphabets[index + 1];
+    while (nextLetter && !dataset[nextLetter]) {
+      index++;
+      nextLetter = alphabets[index + 1];
+    }
+    if (nextLetter) {
+      loadAlphabet(nextLetter);
+      alphabetSelect.value = nextLetter;
+    } else {
+      flashcard.innerHTML = `
+        <div class="completion">
+          <h2>🏆 Amazing! You’ve completed all alphabets!</h2>
+        </div>
+      `;
+    }
   }
 }
